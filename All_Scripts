@@ -1,0 +1,349 @@
+# Downloading (wget) and unpacking (tar) eQTL data:
+
+# Brain eQTLs from Qi et al. 2018 wget 
+http://cnsgenomics.com/data/SMR/Brain-eMeta.tar.gz
+tar -xvzf Brain-eMeta.tar.gz
+
+# Blood eQTLs from Lloyd-Jones et al. 2017 wget
+http://cnsgenomics.com/data/SMR/cage_eqtl_data_hg19.tgz
+tar -xvzf cage_eqtl_data_hg19.tgz
+
+# ~ these scripts which excluded SNPs by QC parameters were run due to file permissions
+# imputation score (best guess genotyping) < 0.90 was excluded with extract_INFO_0.9_SNPs_CLOZUK.sh
+# QC_CLOZUK_full_dataset.sh
+# remove_diff_miss_SNPs_CLOZUK_full_dataset.sh
+
+# List of SNPs from CLOZUK GWAS
+zcat ${CLOZUK}SUMSTATS/daner_PGC_SCZ52_0513a_noclo.1016a.gz | tail -n +2 | awk '{print $2}' > pgc.scz.noclo.snp.txt
+
+# Keep SNPs from CLOZUK GWAS
+!/bin/bash -e
+#$ -wd /home/c1820749/
+#$ -l h_vmem=1.5G
+#$ -N test_extract_PGCSCZ
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+files=/home/SHARED/Amy_MSc/
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_QCd_rsID --extract ${files}pgc.scz.noclo.snp.txt --allow-no-sex --make-bed --out ${files}chr${SGE_TASK_ID}_test
+
+# Check how many SNPs there are in the files generated
+wc -l /home/SHARED/Amy_MSc/*_PGCSCZ_overlap.bim
+
+## Removing stand ambiguous SNPs 
+# Identify strand ambiguous SNPs from your data
+
+# Concatonate the 22 .bim files together to get a full list of SNPs  
+cat /home/SHARED/Amy_MSc/CLOZUK_GWAS_BGE_chr*_full_dataset_rsID_QCd_PGCSCZ_overlap.bim > /home/SHARED/Amy_MSc/CLOZUK_PGCSCZ_overlap.bim
+
+# Where column 5 = T and column 6 = A, or column 5 = A and column 6 = T, or column 5 = G and column 6 = C, or column 5 = C and column 6 = G
+# print the SNP name followed by ambig (e.g. rs100000 ambig) otherwise just print the SNP name (rs100000) 
+# search for lines that contain the word ambig (e.g. rs100000 ambig), then print column one (the SNP ID) to a file for subsequent exclusion
+
+awk '{ if (($5=="T" && $6=="A")||($5=="A" && $6=="T")||($5=="C" && $6=="G")||($5=="G" && $6=="C")) print $2, "ambig" ; else print $2 ;}' /home/SHARED/Amy_MSc/CLOZUK_PGCSCZ_overlap.bim | grep ambig | awk '{print $1}' > ambig.list.full.dataset
+	
+# Check how long the list of strand ambiguous SNPs is	
+wc -l /home/SHARED/Amy_MSc/ambig.list.full.dataset
+                     
+## Exclude these from CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap
+#!/bin/bash -e
+#$ -wd /home/c1820749/
+#$ -pe smp 1-8
+#$ -l h_vmem=1.5G
+#$ -N exclude_strand_amb_SNPs
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+files=/home/SHARED/Amy_MSc/
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap --exclude ${files}ambig.list.full.dataset --allow-no-sex --make-bed --out ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb
+
+##############################################################################
+
+## Harmonizing strand and reference allele to GWAS summary stats
+
+### Identify strand mismatches between local and external data
+# extract SNP CHR A1 A2 from CLOZUK data
+
+for i in {1..22}; do awk '{print $2 " " $5 " " $6}' /home/SHARED/Amy_MSc/CLOZUK_GWAS_BGE_chr"$i"_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb.bim >> /home/SHARED/Amy_MSc/temp.full.data.bim ; done 
+
+# extract SNP A1 A2 from PGC data; line was run already due to file permissions
+# zcat ${CLOZUK}SUMSTATS/daner_PGC_SCZ52_0513a_noclo.1016a.gz | tail -n +2 | awk '{print $2 " " $4 " "$5}' > ${files}pgc.scz.noclo.temp
+
+# where SNP ID (column 1) matches between local and external data, 
+# concatenate external and local files into new file (print the full line $0 from each file onto one line per SNP)
+
+awk 'NR==FNR{s=$1;a[s]=$0;next} a[$1]{print $0 " "a[$1]}' /home/SHARED/Amy_MSc/pgc.scz.noclo.temp /home/SHARED/Amy_MSc/temp.full.data.bim > /home/SHARED/Amy_MSc/A1_A2_CLOZUK_full_dataset_PGCSCZ_v1.txt
+
+## Scenario 1 - CLOZUK SNPs need A1 updating to be congruent with PGCSCZ SNPs
+# If PGC_A1 = CLOZ_A2 and PGC_A2 = CLOZ_A1, print SNP ID and PGC_A1 to file and strip duplicate SNPs
+awk '{if( $5==$3 && $6==$2 ) print $1 " " $5}' ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_v1.txt | awk '!seen[$0]++' > ${files}full_dataset_a1_update_v1.txt
+		
+# SCENARIO 1 SCRIPT: update_full_dataset_A1_v1.sh 
+
+#!/bin/bash -e
+#$ -wd /home/c1820749/
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N update_full_dataset_A1_v1
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+
+# create symbolic links to file paths
+files=/home/SHARED/Amy_MSc/
+
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb --a1-allele ${files}full_dataset_a1_update_v1.txt --allow-no-sex --make-bed --out ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v1
+
+## Use .bim file from output of scenario 1 to create new temporary CLOZUK/PGCSCZ SNP and A1 file
+for i in {1..22}; do awk '{print $2 " " $5 " " $6}' ${files}CLOZUK_GWAS_BGE_chr"$i"_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v1.bim >> ${files}temp2.full.data.bim ; done 
+
+# where SNP ID (column 1) matches between local and external data, concatenate external and local files into new file 
+awk 'NR==FNR{s=$1;a[s]=$0;next} a[$1]{print $0 " "a[$1]}' ${files}pgc.scz.noclo.temp ${files}temp2.full.data.bim > ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_v2.txt
+
+
+## Scenario 2 - CLOZUK SNPs need flipping to be congruent with PGCSCZ SNPs
+# If PGC_A1 != CLOZ_A1 and PGC_A2 != CLOZ_A2, write SNP ID to file and strip duplicate SNPs
+# N.B. != means does not equal
+
+awk '{if( $5!=$2 && $6!=$3 ) print $1}' ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_v2.txt | awk '!seen[$0]++' > ${files}full_dataset_to_flip_v2.txt
+	 
+	# Update using --flip in PLINK *** REMEMBER TO USE --keep-allele-order ***
+
+    ## SCENARIO 2 SCRIPT: update_full_dataset_A1_v2.sh 	
+
+#!/bin/bash -e
+#$ -wd /home/c1820749
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N update_full_dataset_A1_v2
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+# create symbolic links to file paths
+files=/home/SHARED/Amy_MSc/
+/share/apps/plink2 --bfile ${plink}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v1 --flip ${files}full_dataset_to_flip_v2.txt --keep-allele-order --allow-no-sex --make-bed --out ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v2
+
+# Scenario 3 - CLOZUK SNPs need flipping AND updating. Flipping has already occurred in Scenario 2.
+## Use .bim file from output of scenario 2 to create new CLOZUK/PGCSCZ SNP and A1 file
+for i in {1..22}; do awk '{print $2 " " $5 " " $6}' ${files}CLOZUK_GWAS_BGE_chr"$i"_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v2.bim >> ${files}temp3.full.data.bim ; done
+
+# where SNP ID (column 1) matches between local and external data, concatenate external and local files into new file 
+awk 'NR==FNR{s=$1;a[s]=$0;next} a[$1]{print $0 " "a[$1]}' ${files}pgc.scz.noclo.temp ${files}temp3.full.data.bim > ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_v3.txt
+
+# If PGC_A1 = CLOZ_A2 and PGC_A2 = CLOZ_A1, print snp ID and PGC_A1 to file and strip duplicate SNPs
+awk '{if( $5==$3 && $6==$2 ) print $1 " " $5}' ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_v3.txt | awk '!seen[$0]++' > ${files}full_dataset_a1_update_v3.txt
+
+## SCENARIO 3 SCRIPT: update_full_dataset_A1_v3.sh
+
+#!/bin/bash -e
+#$ -wd /home/c1820749/
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N update_full_dataset_A1_v3
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+
+# create symbolic links to file paths
+files=/home/SHARED/Amy_MSc/
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v2 --a1-allele ${files}full_dataset_a1_update_v3.txt --keep-allele-order --allow-no-sex --make-bed --out ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v3
+
+## Scenario 4 - identify SNPs where A1/A2 STILL don't match between CLOZUK and PGCSCZ
+## Use .bim file from output of scenario 3 to create new CLOZUK/PGCSCZ SNP and A1 file
+for i in {1..22}; do awk '{print $2 " " $5 " " $6}' ${files}CLOZUK_GWAS_BGE_chr"$i"_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v3.bim >> ${files}temp4.full.data.bim ; done
+
+# where SNP ID (column 1) matches between local and external data, concatenate external and local files into new file 
+awk 'NR==FNR{s=$1;a[s]=$0;next} a[$1]{print $0 " "a[$1]}' ${files}pgc.scz.noclo.temp ${files}temp4.full.data.bim > ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_v4.txt
+
+# Print full line (rather than just SNP ID) for each SNP which still does not match
+awk '{if( $5!=$2 || $6!=$3 ) print $0}' ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_v4.txt > ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_to_remove_check.txt
+		
+		# Visually skim this file to see what the persistent allele mismatch is
+		# Once checked that SNPs in to_remove_check.txt must be removed, use --exclude to remove these from CLOZUK
+		
+# Print SNP IDs of SNPs to exclude		
+awk '{if( $5!=$2 || $6!=$3 ) print $1}' ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_v4.txt > ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_to_remove.txt
+
+# SCENARIO 4 SCRIPT: update_full_dataset_A1_v4.sh for script
+
+#!/bin/bash -e
+#$ -cwd
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N update_full_dataset_A1_v4
+#$ -j y
+#$ -M HallL10@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+# create symbolic links to file paths
+files=/home/SHARED/Amy_MSc/
+
+/share/apps/plink2 --bfile ${plink}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v3 --exclude ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_to_remove.txt --keep-allele-order --allow-no-sex --make-bed --out ${plink}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized
+
+
+# Store all outputs from previous scripts in new folder 
+mkdir /home/SHARED/Amy_MSc/old_plink
+
+## Excluding the major histocompatibility complex and flanking region (due to complex LD structure obscuring true signal)
+awk '{ if ($1==6 && $4>25000000 && $4<34000000) print $2, "MHC" ; else print $2 ;}' CLOZUK_GWAS_BGE_chr6_full_dataset_rsID_QCd_PGCSCZ_harmonized.bim | grep -v MHC | awk '{print $1}' >> SNPlist_noMHC.txt
+
+# Then extract those SNPs (you only need to do this for chromosome 6) in the same way we did in  test_extract.sh, overwriting the CLOZUK_GWAS_BGE_chr6_full_dataset_rsID_QCd_PGCSCZ_harmonized file so that chromosome 6 is updated without MHC region.
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr6_full_dataset_rsID_QCd_PGCSCZ_harmonized file --exclude ${files}SNPlist_noMHC.txt --allow-no-sex --make-bed --out ${files}CLOZUK_GWAS_BGE_chr6_full_dataset_rsID_QCd_PGCSCZ_harmonized
+
+# Extract your two lists of brain and blood eQTLs from CLOZUK_GWAS_BGE_chr*_full_dataset_rsID_QCd_PGCSCZ_harmonized:
+# SCRIPT: extract_eQTLs.sh
+#!/bin/bash -e
+#$ -wd /home/c1820749/
+#$ -l h_vmem=2G
+#$ -N eQTL_extract
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+files=/home/SHARED/Amy_MSc/
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized --extract ${files}Brain_eMeta_SNP.txt  --allow-no-sex --keep-allele-order --make-bed --out ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized_brain
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized --extract ${files}CAGE_sparse_SNP.txt  --allow-no-sex --keep-allele-order --make-bed --out ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized_blood
+
+# Create subset of 1000 people because clumping is very computationally intensive.
+# SCRIPT: extract_n1000_subset_for_pruning.sh
+#!/bin/bash -e
+#$ -wd /home/c1820749
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N extract_n1000_subset_for_pruning
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+# create symbolic links to file paths
+files=/home/SHARED/Amy_MSc/
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized  --keep ${files}n1000_subset.txt --keep-allele-order --allow-no-sex --make-bed --out ${files}CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_full_n1000_clumping_subset
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized_blood --keep ${files}n1000_subset.txt --keep-allele-order --allow-no-sex --make-bed --out ${files}CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_blood_n1000_clumping_subset
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized_brain --keep ${files}n1000_subset.txt --keep-allele-order --allow-no-sex --make-bed --out ${files}CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_brain_n1000_clumping_subset
+
+## LD clump-based pruning
+## SCRIPT: clump_LD_prune_PGCSCZ.sh
+#!/bin/bash -e
+#$ -wd /home/c1820749/
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N clump_LD_prune_PGCSCZ
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+# create symbolic links to file paths
+files=/home/SHARED/Amy_MSc/
+/share/apps/plink2 --bfile CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_filename_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_filename_n1000_clumped
+/share/apps/plink2 --bfile CLOZUK_PGCSCZ_blood_eqtl_chr${SGE_TASK_ID}_filename_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out CLOZUK_PGCSCZ_blood_eqtl_chr${SGE_TASK_ID}_filename_n1000_clumped
+/share/apps/plink2 --bfile CLOZUK_PGCSCZ_brain_eqtl_chr${SGE_TASK_ID}_filename_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out CLOZUK_PGCSCZ_brain_eqtl_chr${SGE_TASK_ID}_filename_n1000_clumped
+
+
+## Extract pruned SNPs, ready for polygenic profile scoring
+## SCRIPT: extract_pruned_snps.sh
+#!/bin/bash -e
+#$ -wd /home/c1820749
+#$ -pe smp 1-8
+#$ -l h_vmem=8G
+#$ -N extract_pruned_snps
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+# create symbolic links to file paths
+files=/home/SHARED/Amy_MSc/
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized  --extract ${files}full_pruned_SNPlist_rerun.txt --keep-allele-order --allow-no-sex --make-bed --out ${files}CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_full_prs_ready
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized_blood --extract ${files}blood_clumpedSNPlist.txt --keep-allele-order --allow-no-sex --make-bed --out ${files}CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_blood_prs_ready
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_harmonized_brain --extract ${files}brain_clumpedSNPlist.txt --keep-allele-order --allow-no-sex --make-bed --out ${files}CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_brain_prs_ready
+
+
+## Generating files required for polygenic profile scoring
+##### Create your .raw .dat and .qrange files for scoring #####
+
+# .raw file contains the columns SNPID, A1, weight (here the log of the odds ratio from the schizophrenia GWAS
+# File was copied to /home/SHARED/Amy_MSc/ as it involves accessing the PGC GWAS summary stats (permissions)
+zcat ${CLOZUK}SUMSTATS/daner_PGC_SCZ52_0513a_noclo.1016a.gz | tail -n +2 | awk '{print $2 " " $4 " " log($9)}' > /home/SHARED/Amy_MSc/SCZ.raw
+
+
+# .dat file contains the SNPID and the P-value
+# Pulling the SNPID and P-value out of the .clumped file for different file subsets, across chromosomes
+declare -a arr=(full blood brain) #the words that make the .clumped files unique are 'full', 'blood', and 'brain'
+for i in ${arr[@]} 
+do 
+for j in {1..22} #for loop is iterating over 22 chromosomes
+do 
+tail -n +2 CLOZUK_GWAS_BGE_chr"$j"_"$i"_dataset.clumped | awk '{print $3 " " $5}' >> ${data_harm}"$i".tmp 
+done 
+awk 'BEGIN{printf "SNP P\n"}{print $0}' ${data_harm}"$i".tmp >> ${data_harm}SCZ_"$i"subset.dat #.dat file created
+rm ${data_harm}"$i".tmp 
+done
+
+# Creating .qrange file for p-value thresholds for PRS
+# Two thresholds tested: S1 = 0.00 - 0.05; S2 = 0.00 - 1.00
+
+# printf "S1 0.00 0.05 \nS2 0.00 1.00\" > /home/SHARED/Amy_MSc/pval.qrange
+
+# The same .raw and .qrange files were the same for all three sets of scores; differences only lie in the .dat and input files
+
+##### Generate polygenic profile scores! #####
+	SCRIPT: generate_prs.sh
+    
+#!/bin/bash -e
+#$ -wd /home/c1820749
+#$ -pe smp 1-8
+#$ -l h_vmem=8G
+#$ -N generate_PGS
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+
+files=/home/SHARED/Amy_MSc/
+
+/share/apps/plink2 --bfile ${files}CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_full_prs_ready --score ${files}SCZ.raw --q-score-range ${files}pval.qrange ${files}full.dat --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full
+/share/apps/plink2 --bfile ${files}CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_blood_prs_ready --score ${files}SCZ.raw --q-score-range ${files}pval.qrange ${files}bloodsubset.dat --keep-allele-order --allow-no-sex --out /home/SHARED/Amy_MSc/Scores/CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_blood
+/share/apps/plink2 --bfile ${files}CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_brain_prs_ready --score ${files}SCZ.raw --q-score-range ${files}pval.qrange ${files}brainsubset.dat --keep-allele-order --allow-no-sex --out /home/SHARED/Amy_MSc/Scores/CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_brain
+
+
+## POLYGENIC RISK SCORES CREATED! These scores will now be processed through regression in R. 
+
+## TWAS DATASETS ##
+
+# Running a TWAS requires three types of files: GWAS summary statistics of the trait of interest;...
+
+## SCHIZOPHRENIA TWAS
+# SCRIPT: SCZ_TWAS.sh
+#!/bin/bash -e
+#$ -wd /home/c1820749
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N SCZ_TWAS
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1:22
+Rscript /share/apps/fusion_twas-master/FUSION.assoc_test.R --sumstats /home/SHARED/Amy_MSc/CLOZUK_PGC2noclo.METAL.assoc.dosage.sumstats.rsids.txt --weights /neurocluster/databank/FUSION/WEIGHTS/CMC.BRAIN.RNASEQ/CMC.BRAIN.RNASEQ.pos --weights_dir /neurocluster/databank/FUSION/WEIGHTS/CMC.BRAIN.RNASEQ/CMC.BRAIN.RNASEQ  --ref_ld_chr /neurocluster/databank/FUSION/LDREF/1000G.EUR. --chr ${SGE_TASK_ID} --out /home/SHARED/Amy_MSc/SCZ_noMHC_chr${SGE_TASK_ID}.txt
+
+## COGNITION TWAS
+# The main difference between the schizophrenia and cognition TWAS is the fact the cognition TWAS uses *different* summary statistics: cog_sum_stats.sumstats
+# SCRIPT: COG_TWAS.sh
+#!/bin/bash -e
+#$ -wd /home/c1820749
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N COG_TWAS
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1:22
+Rscript /share/apps/fusion_twas-master/FUSION.assoc_test.R --sumstats /home/SHARED/Amy_MSc/cog_sum_stats.sumstats --weights /neurocluster/databank/FUSION/WEIGHTS/CMC.BRAIN.RNASEQ/CMC.BRAIN.RNASEQ.pos --weights_dir /neurocluster/databank/FUSION/WEIGHTS/CMC.BRAIN.RNASEQ/ --ref_ld_chr /neurocluster/databank/FUSION/LDREF/1000G.EUR. --chr ${SGE_TASK_ID} --out /home/SHARED/Amy_MSc/COG_noMHC_chr${SGE_TASK_ID}.txt
+
+
+## The outputs of these TWAS will create two files of TWAS summary statistics
+
+## Use R to extract the SNP lists from each file and copy them back into your working directory 
