@@ -1,0 +1,20 @@
+## This script 
+
+#!/bin/bash -e
+#$ -wd /home/c1820749/
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N clump_LD_prune_PGCSCZ
+#$ -j y
+#$ -M GaskinAE@cardiff.ac.uk
+#$ -m ea
+#$ -t 1-22
+
+# create symbolic links to file paths
+files=/home/SHARED/Amy_MSc/
+
+/share/apps/plink2 --bfile CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_filename_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr*_full_dataset
+
+/share/apps/plink2 --bfile CLOZUK_PGCSCZ_blood_eqtl_chr${SGE_TASK_ID}_filename_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr*_blood_dataset
+
+/share/apps/plink2 --bfile CLOZUK_PGCSCZ_brain_eqtl_chr${SGE_TASK_ID}_filename_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr*_brain_dataset
