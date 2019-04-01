@@ -5,3 +5,7 @@ awk '{ if ($1==6 && $4>25000000 && $4<34000000) print $2, "MHC" ; else print $2 
 # Then extract those SNPs (you only need to do this for chromosome 6) in the same way we did in  test_extract.sh, overwriting the CLOZUK_GWAS_BGE_chr6_full_dataset_rsID_QCd_PGCSCZ_harmonized file so that chromosome 6 is updated without MHC region.
 
 /share/apps/plink2 --bfile /path/to/file/CLOZUK_GWAS_BGE_chr6_full_dataset_rsID_QCd_PGCSCZ_harmonized file --exclude /path/to/file/SNPlist_noMHC.txt --allow-no-sex --make-bed --out /path/to/file/CLOZUK_GWAS_BGE_chr6_full_dataset_rsID_QCd_PGCSCZ_harmonized
+
+## Count number of SNPs in harmonized files, should be ~ 5.5 million SNPs remaining
+
+wc -l /path/to/file/CLOZUK_GWAS_BGE_chr*_full_dataset_rsID_QCd_PGCSCZ_harmonized.bim
