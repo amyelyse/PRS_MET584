@@ -1,3 +1,8 @@
+## IMPORTANT: THIS SCRIPT IS WRITTEN TO PROCESS THE S1.PROFILE FILES.
+## To process the S2 files, change all of the 'S1' in this script to 'S2'
+## In R, this can be achieved by clicking on 'edit' -> 'replace and find'
+
+
 ## Set working directory
 setwd("path/to/files")
 
@@ -5,7 +10,7 @@ setwd("path/to/files")
 library(tidyverse)
 
 ## Store the pattern of filepath names in a vector called 'filenames'
-filenames <- list.files(path = "path/to/files", pattern = "CLOZUK_GWAS_BGE_chr+.*profile")
+filenames <- list.files(path = "/path/to/files/", pattern = "CLOZUK_GWAS_BGE_chr+.*profile")
 
 ## Get names without ".profile" and store in "names". 1 - 66 assumes there are 66 files in the directory.
 names <- substr(filenames, 1, 66)
