@@ -7,23 +7,23 @@ zcat ${CLOZUK}SUMSTATS/daner_PGC_SCZ52_0513a_noclo.1016a.gz | tail -n +2 | awk '
 
 
 # Create the .dat file containing the SNPID and the P-value
-# Pulling the SNPID and P-value out of the .clumped file for different file subsets, across chromosomes using a for loop.
-# The words that make the .clumped files unique in the array are 'full', 'blood', and 'brain'
+# Pulling the SNPID and P-value out of the prs_ready files for different file subsets, across chromosomes using a for loop.
+# The words that make the prs_ready files unique in the array are 'full', 'blood', and 'brain'
 
 declare -a arr=(full blood brain) 
 for i in ${arr[@]} 
 do 
 for j in {1..22} #for loop is iterating over 22 chromosomes
 do 
-tail -n +2 CLOZUK_GWAS_BGE_chr"$j"_"$i"_dataset.clumped | awk '{print $3 " " $5}' >> ${data_harm}"$i".tmp 
+tail -n +2 CLOZUK_PGCSCZ_chr"$j"_"$i"_prs_ready | awk '{print $3 " " $5}' >> /path/to/directory/"$i".tmp 
 done 
-awk 'BEGIN{printf "SNP P\n"}{print $0}' ${data_harm}"$i".tmp >> ${data_harm}SCZ_"$i"subset.dat 
-rm ${data_harm}"$i".tmp 
+awk 'BEGIN{printf "SNP P\n"}{print $0}' ${data_harm}"$i".tmp >> /path/to/directory/SCZ_"$i"subset.dat 
+rm /path/to/directory/"$i".tmp 
 done
 
 # Create .qrange file for p-value thresholds for PRS
 # Two thresholds tested: S1 = 0.00 - 0.05; S2 = 0.00 - 1.00
 
-# printf "S1 0.00 0.05 \nS2 0.00 1.00\" > /path/to.files/pval.qrange
+# printf "S1 0.00 0.05 \nS2 0.00 1.00\" > /path/to/files/pval.qrange
 
 # The same .raw and .qrange files were the same for all three sets of scores; differences only lie in the .dat and input files
