@@ -1,0 +1,5 @@
+## Scenario 2 - CLOZUK SNPs need flipping to be congruent with PGCSCZ SNPs
+# If PGC_A1 != CLOZ_A1 and PGC_A2 != CLOZ_A2, write SNP ID to file and strip duplicate SNPs
+# N.B. != means does not equal
+
+awk '{if( $5!=$2 && $6!=$3 ) print $1}' ${files}A1_A2_CLOZUK_full_dataset_PGCSCZ_v2.txt | awk '!seen[$0]++' > ${files}full_dataset_to_flip_v2.txt
