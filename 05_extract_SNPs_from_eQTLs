@@ -1,0 +1,7 @@
+## Making use of awk to extract list of SNPs from both sets of eQTLs
+
+## BRAIN
+awk '{ print $2 }' /path/to/file/Brain-eMeta.esi > Brain-eMeta_SNP.txt 
+
+## BLOOD
+awk '{ print $2 }' /path/to/file/CAGE_sparse.esi > CAGE_sparse_SNP.txt
