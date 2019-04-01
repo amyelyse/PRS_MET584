@@ -1,0 +1,31 @@
+## Extract SNPs shared by both PGC and CLOZUK datasets 
+
+!/bin/bash -e
+#$ -wd /path/to/directory
+#$ -l h_vmem=1.5G
+#$ -N test_extract_PGCSCZ
+#$ -j y
+#$ -M #EMAIL
+#$ -m ea
+#$ -t 1-22
+
+files=/path/to/file
+
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_QCd_rsID --extract ${files}pgc.scz.noclo.snp.txt --allow-no-sex --make-bed --out ${files}chr${SGE_TASK_ID}_test
+
+# Check how many SNPs there are in the files generated
+wc -l ${files}chr*_test.bim
+
+## Identify and removing strand ambiguous SNPs from your data
+
+# Concatonate the 22 .bim files together to get a full list of SNPs  
+cat /path/to/file/chr*_test.bim > /path/to/file/CLOZUK_PGCSCZ_overlap.bim
+
+# Where column 5 = T and column 6 = A, or column 5 = A and column 6 = T, or column 5 = G and column 6 = C, or column 5 = C and column 6 = G
+# Print the SNP name followed by ambig (e.g. rs100000 ambig) otherwise just print the SNP name (rs100000) 
+# Search for lines that contain the word ambig (e.g. rs100000 ambig), then print column one (the SNP ID) to a file for subsequent exclusion
+
+awk '{ if (($5=="T" && $6=="A")||($5=="A" && $6=="T")||($5=="C" && $6=="G")||($5=="G" && $6=="C")) print $2, "ambig" ; else print $2 ;}' /path/to/file/CLOZUK_PGCSCZ_overlap.bim | grep ambig | awk '{print $1}' > ${files}ambig.list.full.dataset
+	
+# Check how long the list of strand ambiguous SNPs is	
+wc -l ${files}ambig.list.full.dataset
