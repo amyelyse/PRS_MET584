@@ -15,8 +15,9 @@
 # create symbolic links to file paths
 files=/path/to/file/
 
-/share/apps/plink2 --bfile CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_filename_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr*_full_dataset
+/share/apps/plink2 --bfile CLOZUK_PGCSCZ_chr${SGE_TASK_ID}_full_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr*_full_dataset
 
-/share/apps/plink2 --bfile CLOZUK_PGCSCZ_blood_eqtl_chr${SGE_TASK_ID}_filename_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr*_blood_dataset
+/share/apps/plink2 --bfile CLOZUK_PGCSCZ_blood_eqtl_chr${SGE_TASK_ID}_blood_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr*_blood_dataset
 
-/share/apps/plink2 --bfile CLOZUK_PGCSCZ_brain_eqtl_chr${SGE_TASK_ID}_filename_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr*_brain_dataset
+/share/apps/plink2 --bfile CLOZUK_PGCSCZ_brain_eqtl_chr${SGE_TASK_ID}_brain_n1000_clumping_subset --clump ${files}pgc.scz.noclo.clump.pval.txt --clump-p1 1 --clump-kb 500 --clump-r2 0.2 --keep-allele-order --allow-no-sex --out ${files}CLOZUK_GWAS_BGE_chr*_brain_dataset
+
