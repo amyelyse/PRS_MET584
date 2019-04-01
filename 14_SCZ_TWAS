@@ -1,7 +1,7 @@
 ## SCHIZOPHRENIA TWAS ## 
 
 ## Three types of file are required to run a TWAS:
-## GWAS summary statistics, expression weights from an association study pertaining to your trait of interest, and an LD reference panel (ideally all the same ancestries to avoid systematic bias through population stratification)
+## GWAS summary statistics (PGC2noclo_CMC_noMHC_full.txt), expression weights from an association study pertaining to your trait of interest, and an LD reference panel (ideally all the same ancestries to avoid systematic bias through population stratification)
 
 #!/bin/bash -e
 #$ -wd /path/to/directory/
@@ -13,7 +13,7 @@
 #$ -m ea
 #$ -t 1:22
 
-Rscript /share/apps/fusion_twas-master/FUSION.assoc_test.R --sumstats /path/to/file/CLOZUK_PGC2noclo.METAL.assoc.dosage.sumstats.rsids.txt --weights /neurocluster/databank/FUSION/WEIGHTS/CMC.BRAIN.RNASEQ/CMC.BRAIN.RNASEQ.pos --weights_dir /neurocluster/databank/FUSION/WEIGHTS/CMC.BRAIN.RNASEQ/CMC.BRAIN.RNASEQ  --ref_ld_chr /neurocluster/databank/FUSION/LDREF/1000G.EUR. --chr ${SGE_TASK_ID} --out /path/to/file/SCZ_noMHC_chr${SGE_TASK_ID}.txt
+Rscript /share/apps/fusion_twas-master/FUSION.assoc_test.R --sumstats /path/to/file/PGC2noclo_CMC_noMHC_full.txt --weights /neurocluster/databank/FUSION/WEIGHTS/CMC.BRAIN.RNASEQ/CMC.BRAIN.RNASEQ.pos --weights_dir /neurocluster/databank/FUSION/WEIGHTS/CMC.BRAIN.RNASEQ/CMC.BRAIN.RNASEQ  --ref_ld_chr /neurocluster/databank/FUSION/LDREF/1000G.EUR. --chr ${SGE_TASK_ID} --out /path/to/file/SCZ_noMHC_chr${SGE_TASK_ID}.txt
 
 ## The outputs of this TWAS will create a file of TWAS summary statistics
 
