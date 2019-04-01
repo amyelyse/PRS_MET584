@@ -1,0 +1,29 @@
+## Generating files required for polygenic profile scoring
+##### Create your .raw .dat and .qrange files for scoring #####
+
+# Create the .raw file containing the columns SNPID, A1, weight (here the log of the odds ratio from the schizophrenia GWAS
+# File was copied to my directory as it involves accessing the PGC GWAS summary stats (permissions)
+zcat ${CLOZUK}SUMSTATS/daner_PGC_SCZ52_0513a_noclo.1016a.gz | tail -n +2 | awk '{print $2 " " $4 " " log($9)}' > /path/to/directory/SCZ.raw
+
+
+# Create the .dat file containing the SNPID and the P-value
+# Pulling the SNPID and P-value out of the .clumped file for different file subsets, across chromosomes using a for loop.
+# The words that make the .clumped files unique in the array are 'full', 'blood', and 'brain'
+
+declare -a arr=(full blood brain) 
+for i in ${arr[@]} 
+do 
+for j in {1..22} #for loop is iterating over 22 chromosomes
+do 
+tail -n +2 CLOZUK_GWAS_BGE_chr"$j"_"$i"_dataset.clumped | awk '{print $3 " " $5}' >> ${data_harm}"$i".tmp 
+done 
+awk 'BEGIN{printf "SNP P\n"}{print $0}' ${data_harm}"$i".tmp >> ${data_harm}SCZ_"$i"subset.dat 
+rm ${data_harm}"$i".tmp 
+done
+
+# Create .qrange file for p-value thresholds for PRS
+# Two thresholds tested: S1 = 0.00 - 0.05; S2 = 0.00 - 1.00
+
+# printf "S1 0.00 0.05 \nS2 0.00 1.00\" > /path/to.files/pval.qrange
+
+# The same .raw and .qrange files were the same for all three sets of scores; differences only lie in the .dat and input files
