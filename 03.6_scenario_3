@@ -1,0 +1,16 @@
+## SCENARIO 3 SCRIPT
+
+#!/bin/bash -e
+#$ -wd /path/to/directory/
+#$ -pe smp 1-8
+#$ -l h_vmem=4G
+#$ -N update_full_dataset_A1_v3
+#$ -j y
+#$ -M #EMAIL
+#$ -m ea
+#$ -t 1-22
+
+# create symbolic links to file paths
+files=/path/to/files/
+
+/share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v2 --a1-allele ${files}full_dataset_a1_update_v3.txt --keep-allele-order --allow-no-sex --make-bed --out ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v3
