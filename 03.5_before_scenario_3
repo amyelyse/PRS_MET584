@@ -1,0 +1,9 @@
+# Scenario 3 - CLOZUK SNPs need flipping AND updating. Flipping has already occurred in Scenario 2.
+## Use .bim file from output of scenario 2 to create new CLOZUK/PGCSCZ SNP and A1 file
+for i in {1..22}; do awk '{print $2 " " $5 " " $6}' /path/to/file/CLOZUK_GWAS_BGE_chr"$i"_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v2.bim >> /path/to/file/temp3.full.data.bim ; done
+
+# where SNP ID (column 1) matches between local and external data, concatenate external and local files into new file 
+awk 'NR==FNR{s=$1;a[s]=$0;next} a[$1]{print $0 " "a[$1]}' /path/to/file/pgc.scz.noclo.temp /path/to/file/temp3.full.data.bim > /path/to/file/A1_A2_CLOZUK_full_dataset_PGCSCZ_v3.txt
+
+# If PGC_A1 = CLOZ_A2 and PGC_A2 = CLOZ_A1, print snp ID and PGC_A1 to file and strip duplicate SNPs
+awk '{if( $5==$3 && $6==$2 ) print $1 " " $5}' /path/to/file/A1_A2_CLOZUK_full_dataset_PGCSCZ_v3.txt | awk '!seen[$0]++' > /path/to/file/full_dataset_a1_update_v3.txt
