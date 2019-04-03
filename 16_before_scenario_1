@@ -1,0 +1,18 @@
+## Harmonizing the .bim files to new summary statistics for the cognition TWAS
+## This is similar to the code to run before the previous scenario 1, but the references to column numbers have been changed to suit the new summary statistics file
+
+### Identify strand mismatches between local and external data
+# extract SNP CHR A1 A2 from CLOZUK data
+
+for i in {1..22}; do awk '{print $2 " " $5 " " $6}' /path/to/file/CLOZUK_GWAS_BGE_chr"$i"_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb.bim >> /path/to/file/temp.full.data.bim ; done
+
+# Summary stats for cognition TWAS are the SavageJansen2018_intelligence_metaanalysis.txt
+
+# Where SNP ID (column 1) matches between local and external data, 
+# concatenate external and local files into new file (print the full line $0 from each file onto one line per SNP)
+
+awk 'NR==FNR{s=$1;a[s]=$0;next} a[$1]{print $0 " "a[$1]}' /path/to/file/SavageJansen_2018_intelligence_metaanalysis.txt /path/to/file/temp.full.data.bim > /path/to/directory/TWAS_PRS/A1_A2_CLOZUK_full_dataset_PGCSCZ_v1.txt
+
+## CLOZUK SNPs need A1 updating to be congruent with new SNPs
+# If PGC_A1 = CLOZ_A2 and PGC_A2 = CLOZ_A1, print snp ID and PGC_A1 to file and strip duplicate SNPs
+awk '{if( $5==$3 && $6==$2 ) print $1 " " $5}' /path/to/directory/TWAS_PRS/A1_A2_CLOZUK_full_dataset_PGCSCZ_v1.txt | awk '!seen[$0]++' > /path/to/directory/full_dataset_a1_update_v1.txt
