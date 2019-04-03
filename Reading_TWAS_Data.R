@@ -1,10 +1,10 @@
 ## Set working directory
-setwd("~/Google Drive/Postgrad/4 Case Study MET584/TWAS/SCZ")
+setwd("path/to/file")
 ## Load tidyverse package
 library(tidyverse)
 
 ## Store the pattern of filepath names in a vector called 'filenames'
-filenames <- list.files(path = "~/Google Drive/Postgrad/4 Case Study MET584/TWAS/SCZ", pattern = "SCZ_noMHC_chr+.*txt")
+filenames <- list.files(path = "path/to/file", pattern = "SCZ_noMHC_chr+.*txt")
 ## Get names without ".profile" and store in "names"
 names <- substr(filenames, 1, 22)
 ## Read in all data frames using a 'for' loop 
