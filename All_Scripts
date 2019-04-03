@@ -1,22 +1,13 @@
-# Downloading (wget) and unpacking (tar) eQTL data:
-
+## Downloading (wget) and unpacking (tar) eQTL data:
 # Brain eQTLs from Qi et al. 2018 wget 
 http://cnsgenomics.com/data/SMR/Brain-eMeta.tar.gz
 tar -xvzf Brain-eMeta.tar.gz
-
 # Blood eQTLs from Lloyd-Jones et al. 2017 wget
 http://cnsgenomics.com/data/SMR/cage_eqtl_data_hg19.tgz
 tar -xvzf cage_eqtl_data_hg19.tgz
 
-# ~ these scripts which excluded SNPs by QC parameters were run due to file permissions
-# imputation score (best guess genotyping) < 0.90 was excluded with extract_INFO_0.9_SNPs_CLOZUK.sh
-# QC_CLOZUK_full_dataset.sh
-# remove_diff_miss_SNPs_CLOZUK_full_dataset.sh
 
-# List of SNPs from CLOZUK GWAS
-zcat ${CLOZUK}SUMSTATS/daner_PGC_SCZ52_0513a_noclo.1016a.gz | tail -n +2 | awk '{print $2}' > pgc.scz.noclo.snp.txt
-
-# Keep SNPs from CLOZUK GWAS
+## Extract SNPs from CLOZUK GWAS
 !/bin/bash -e
 #$ -wd /home/c1820749/
 #$ -l h_vmem=1.5G
@@ -29,13 +20,13 @@ files=/home/SHARED/Amy_MSc/
 /share/apps/plink2 --bfile ${files}CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_QCd_rsID --extract ${files}pgc.scz.noclo.snp.txt --allow-no-sex --make-bed --out ${files}chr${SGE_TASK_ID}_test
 
 # Check how many SNPs there are in the files generated
-wc -l /home/SHARED/Amy_MSc/*_PGCSCZ_overlap.bim
+wc -l /home/SHARED/Amy_MSc/chr*_test.bim
 
 ## Removing stand ambiguous SNPs 
 # Identify strand ambiguous SNPs from your data
 
 # Concatonate the 22 .bim files together to get a full list of SNPs  
-cat /home/SHARED/Amy_MSc/CLOZUK_GWAS_BGE_chr*_full_dataset_rsID_QCd_PGCSCZ_overlap.bim > /home/SHARED/Amy_MSc/CLOZUK_PGCSCZ_overlap.bim
+cat /home/SHARED/Amy_MSc/chr*_test.bim > /home/SHARED/Amy_MSc/CLOZUK_PGCSCZ_overlap.bim
 
 # Where column 5 = T and column 6 = A, or column 5 = A and column 6 = T, or column 5 = G and column 6 = C, or column 5 = C and column 6 = G
 # print the SNP name followed by ambig (e.g. rs100000 ambig) otherwise just print the SNP name (rs100000) 
@@ -46,7 +37,7 @@ awk '{ if (($5=="T" && $6=="A")||($5=="A" && $6=="T")||($5=="C" && $6=="G")||($5
 # Check how long the list of strand ambiguous SNPs is	
 wc -l /home/SHARED/Amy_MSc/ambig.list.full.dataset
                      
-## Exclude these from CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap
+## Exclude these strand ambiguous SNPs from chr*_test.bim files
 #!/bin/bash -e
 #$ -wd /home/c1820749/
 #$ -pe smp 1-8
