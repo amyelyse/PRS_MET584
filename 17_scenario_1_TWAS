@@ -8,4 +8,4 @@
 #$ -m ea
 #$ -t 1-22
 
-/share/apps/plink2 --bfile /path/to/file/TWAS_PRS/chr${SGE_TASK_ID}_TWAS_COG --a1-allele /path/to/file/cog_a1_update_v1.txt  --allow-no-sex --make-bed --out /path/to/file/CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_COG_overlap_noAmb_a1_v1
+/share/apps/plink2 --bfile /path/to/file/CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb --a1-/path/to/file/full_dataset_a1_update_v1.txt --allow-no-sex --make-bed --out /path/to/file/CLOZUK_GWAS_BGE_chr${SGE_TASK_ID}_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v1
