@@ -1,0 +1,3 @@
+cat CLOZUK_GWAS_BGE_chr*_TWAS_SCZ.clumped | awk '{print $3}' >> SCZ_TWAS_clumpedSNPlist.txt
+
+cat CLOZUK_GWAS_BGE_chr*_TWAS_COG.clumped | awk '{print $3}' >> COG_TWAS_clumpedSNPlist.txt
