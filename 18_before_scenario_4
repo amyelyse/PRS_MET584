@@ -1,0 +1,20 @@
+## The SNPs don't need to be processed through scenarios 2 and 3 because no SNPs end up being flipped.
+## Therefore, move onto the code needed to run before scenario 4
+## Also note that the MHC has already been removed from this set of SNPs
+
+## Scenario 4 - identify SNPs where A1/A2 STILL don't match between CLOZUK and Savage 
+
+## Use .bim file from output of scenario 3 to create new CLOZUK/PGCSCZ SNP and A1 file
+for i in {1..22}; do awk '{print $2 " " $5 " " $6}' /path/to/file/CLOZUK_GWAS_BGE_chr"$i"_full_dataset_rsID_QCd_PGCSCZ_overlap_noAmb_a1_v2.bim >> /path/to/file/TWAS_PRS/temp4.full.data.bim ; done
+
+# where SNP ID (column 1) matches between local and external data, concatenate external and local files into new file 
+awk 'NR==FNR{s=$1;a[s]=$0;next} a[$1]{print $0 " "a[$1]}' /path/to/file/SavageJansen_2018_intelligence_metaanalysis.txt /path/to/file/temp4.full.data.bim > /path/to/file/A1_A2_CLOZUK_full_dataset_PGCSCZ_v4.txt
+
+# Print full line (rather than just SNP ID) for each SNP which still does not match
+awk '{if( $5!=$2 || $6!=$3 ) print $0}' /path/to/file/TWAS_PRS/A1_A2_CLOZUK_full_dataset_PGCSCZ_v4.txt > /path/to/file/A1_A2_CLOZUK_full_dataset_PGCSCZ_to_remove_check.txt
+		
+		# Visually skim this file to see what the persistent allele mismatch is
+		# Once checked that SNPs in to_remove_check.txt must be removed, use --exclude to remove these SNPs from CLOZUK
+		
+# Print SNP IDs of SNPs to exclude		
+awk '{if( $5!=$2 || $6!=$3 ) print $1}' /home/SHARED/Amy_MSc/TWAS_PRS/A1_A2_CLOZUK_full_dataset_PGCSCZ_v4.txt | awk '!seen[$0]++' > /home/SHARED/Amy_MSc/TWAS_PRS/A1_A2_CLOZUK_full_dataset_PGCSCZ_to_remove.txt
